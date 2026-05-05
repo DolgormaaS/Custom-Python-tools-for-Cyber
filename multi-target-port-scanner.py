@@ -70,7 +70,11 @@ def scanner(filename, choice):
         27017  # MongoDB
     ]
 
-    quick_ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 3306, 3389, 8080, 8443]   
+    quick_ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 3306, 3389, 8080, 8443]
+
+    ports_to_scan = common_ports
+    if choice == 2:
+        ports_to_scan = quick_ports
 
     with open(filename, 'r') as file:
         for host in file:
@@ -78,22 +82,15 @@ def scanner(filename, choice):
                 continue
             host = host.strip() #delete newline \n
             print("Scanning: " + host)
-            if choice == 1:
-                for port in common_ports:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(1)
-                    exists = sock.connect_ex((host, port))
-                    if exists == 0:
-                        print(f"{port} is open")
-                    sock.close()
-            elif choice == 2:
-                for port in quick_ports:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(1)
-                    exists = sock.connect_ex((host, port))
-                    if exists == 0:
-                        print(f"{port} is open")
-                    sock.close()
+            
+            for port in ports_to_scan:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                exists = sock.connect_ex((host, port))
+                if exists == 0:
+                    print(f"{port} is open")
+                sock.close()
+
 
 if len(sys.argv) < 2:
     print("Usage: python3 multi-target-port-scanner.py <filename>")
