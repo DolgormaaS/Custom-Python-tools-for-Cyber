@@ -1,8 +1,8 @@
 import socket #for scanning the ports
 import sys #for reading command line args
+from concurrent.futures import ThreadPoolExecutor
 
-def scanner(filename, choice):
-    common_ports = [
+common_ports = [
         21,    # FTP
         22,    # SSH
         23,    # Telnet (usually vulnerable)
@@ -70,26 +70,19 @@ def scanner(filename, choice):
         27017  # MongoDB
     ]
 
-    quick_ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 3306, 3389, 8080, 8443]
+quick_ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 3306, 3389, 8080, 8443]
 
-    ports_to_scan = common_ports
-    if choice == 2:
-        ports_to_scan = quick_ports
+def scanner(host, port):
 
-    with open(filename, 'r') as file:
-        for host in file:
-            if host == "":
-                continue
-            host = host.strip() #delete newline \n
-            print("Scanning: " + host)
-            
-            for port in ports_to_scan:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
-                exists = sock.connect_ex((host, port))
-                if exists == 0:
-                    print(f"{port} is open")
-                sock.close()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    exists = sock.connect_ex((host, port))
+    if exists == 0:
+        sock.close()
+        return port
+    else:
+        sock.close()
+        return 0
 
 
 if len(sys.argv) < 2:
@@ -100,4 +93,22 @@ choice = int(input("Choose 1 for full scan, 2 for quick scan: "))
 if choice != 1 and choice != 2:
     print("Choose 1 or 2")
     sys.exit(1)
-scanner(sys.argv[1], choice)
+
+ports_to_scan = common_ports
+if choice == 2:
+    ports_to_scan = quick_ports
+
+with open(sys.argv[1], 'r') as file:
+    for host in file:
+        if host == "":
+            continue
+        host = host.strip() #delete newline \n
+        print("Scanning: " + host)
+
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            results = executor.map(lambda port: scanner(host, port), ports_to_scan)
+
+        for port in results:
+            if port != 0:
+                print(f"{port} is open")
+        print("Scan done")
